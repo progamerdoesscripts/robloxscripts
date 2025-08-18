@@ -1,0 +1,282 @@
+--// Services
+local Players = game:GetService("Players")
+local UserInputService = game:GetService("UserInputService")
+local HttpService = game:GetService("HttpService")
+local LocalPlayer = Players.LocalPlayer
+
+--// Config Saving
+local ConfigFile = "config.json"
+local Config = { HitboxSize = 10, HitboxEnabled = false, GuiVisible = true }
+
+local function LoadConfig()
+	if isfile(ConfigFile) then
+		local data = readfile(ConfigFile)
+		local success, decoded = pcall(function()
+			return HttpService:JSONDecode(data)
+		end)
+		if success then
+			for k,v in pairs(decoded) do
+				Config[k] = v
+			end
+		end
+	end
+end
+
+local function SaveConfig()
+	writefile(ConfigFile, HttpService:JSONEncode(Config))
+end
+
+LoadConfig()
+
+--// Hitbox Function
+local function hjklmnvc(value)
+	local hitboxNames = { "Spike", "JumpSet", "Set", "Serve", "Dive", "Bump", "Block" }
+	for _, name in pairs(hitboxNames) do
+		local hitboxFolder = game:GetService("ReplicatedStorage").Assets.Hitboxes[name]
+		local part = hitboxFolder and hitboxFolder:FindFirstChild("Part")
+		if part and part:IsA("BasePart") then
+			part.Size = Vector3.new(value, value, value)
+		else
+			warn("Component not found in " .. name)
+		end
+	end
+end
+
+--// ScreenGui
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Parent = LocalPlayer:WaitForChild("PlayerGui")
+ScreenGui.IgnoreGuiInset = true
+ScreenGui.ResetOnSpawn = false
+
+-- Mobile Open Button
+local MobileOpenButton = Instance.new("TextButton")
+MobileOpenButton.Size = UDim2.new(0, 70, 0, 25)
+MobileOpenButton.Position = UDim2.new(0.5, -35, 0, 5)
+MobileOpenButton.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MobileOpenButton.TextColor3 = Color3.new(1,1,1)
+MobileOpenButton.Text = "Open"
+MobileOpenButton.Font = Enum.Font.GothamBold
+MobileOpenButton.TextScaled = true
+MobileOpenButton.Visible = not UserInputService.KeyboardEnabled
+Instance.new("UICorner", MobileOpenButton).CornerRadius = UDim.new(0, 6)
+MobileOpenButton.Parent = ScreenGui
+
+--// Main Frame
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 280, 0, 180)
+MainFrame.Position = UDim2.new(0.5, -140, 0.5, -90)
+MainFrame.BackgroundTransparency = 0.15
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 8)
+MainFrame.Parent = ScreenGui
+
+-- Gradient
+local MainGradient = Instance.new("UIGradient", MainFrame)
+MainGradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(50, 50, 50))
+}
+MainGradient.Rotation = 45
+
+--// Tab Bar (Draggable Area)
+local TabButtons = Instance.new("Frame")
+TabButtons.Size = UDim2.new(1, -10, 0, 20)
+TabButtons.Position = UDim2.new(0, 5, 0, 5)
+TabButtons.BackgroundTransparency = 0.2
+TabButtons.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+Instance.new("UICorner", TabButtons).CornerRadius = UDim.new(0, 6)
+TabButtons.Parent = MainFrame
+
+local TabGradient = Instance.new("UIGradient", TabButtons)
+TabGradient.Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(35, 35, 35)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(55, 55, 55))
+}
+
+-- Drag only from Tab Bar
+local dragging, dragStart, startPos
+TabButtons.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = true
+		dragStart = input.Position
+		startPos = MainFrame.Position
+	end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local delta = input.Position - dragStart
+		MainFrame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+	end
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		dragging = false
+	end
+end)
+
+--// Create Tab Buttons
+local function CreateTabButton(text, posX)
+	local btn = Instance.new("TextButton")
+	btn.Size = UDim2.new(0, 60, 0, 20)
+	btn.Position = UDim2.new(0, posX, 0, 0)
+	btn.Text = text
+	btn.Font = Enum.Font.GothamBold
+	btn.TextScaled = true
+	btn.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+	btn.BackgroundTransparency = 0.2
+	btn.TextColor3 = Color3.new(1,1,1)
+	Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 6)
+	local g = Instance.new("UIGradient", btn)
+	g.Color = ColorSequence.new{
+		ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),
+		ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 60, 60))
+	}
+	btn.Parent = TabButtons
+	return btn
+end
+
+local MainTabButton = CreateTabButton("Main", 0)
+local SettingsTabButton = CreateTabButton("Settings", 65)
+
+--// Pages
+local function CreatePage()
+	local page = Instance.new("Frame")
+	page.Size = UDim2.new(1, -10, 1, -30)
+	page.Position = UDim2.new(0, 5, 0, 25)
+	page.BackgroundTransparency = 1
+	page.Parent = MainFrame
+	return page
+end
+
+local MainPage = CreatePage()
+local SettingsPage = CreatePage()
+SettingsPage.Visible = false
+
+MainTabButton.MouseButton1Click:Connect(function()
+	MainPage.Visible = true
+	SettingsPage.Visible = false
+end)
+SettingsTabButton.MouseButton1Click:Connect(function()
+	MainPage.Visible = false
+	SettingsPage.Visible = true
+end)
+
+--// Main Tab Content
+local HitboxButton = Instance.new("TextButton")
+HitboxButton.Size = UDim2.new(0.9, 0, 0, 25)
+HitboxButton.Position = UDim2.new(0.05, 0, 0, 10)
+HitboxButton.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+HitboxButton.BackgroundTransparency = 0.2
+HitboxButton.Text = Config.HitboxEnabled and "Deactivate Hitbox" or "Activate Hitbox"
+HitboxButton.TextColor3 = Color3.new(1,1,1)
+HitboxButton.Font = Enum.Font.GothamBold
+HitboxButton.TextScaled = true
+Instance.new("UICorner", HitboxButton).CornerRadius = UDim.new(0, 6)
+Instance.new("UIGradient", HitboxButton).Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 60, 60))
+}
+HitboxButton.Parent = MainPage
+
+local SliderFrame = Instance.new("Frame")
+SliderFrame.Size = UDim2.new(0.9, 0, 0, 12)
+SliderFrame.Position = UDim2.new(0.05, 0, 0, 45)
+SliderFrame.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SliderFrame.BackgroundTransparency = 0.2
+Instance.new("UICorner", SliderFrame).CornerRadius = UDim.new(0, 6)
+SliderFrame.Parent = MainPage
+
+local SliderButton = Instance.new("Frame")
+SliderButton.Size = UDim2.new(Config.HitboxSize/100, 0, 1, 0)
+SliderButton.BackgroundColor3 = Color3.fromRGB(0, 200, 255)
+Instance.new("UICorner", SliderButton).CornerRadius = UDim.new(0, 6)
+SliderButton.Parent = SliderFrame
+
+-- Slider logic
+local sliderDragging = false
+SliderFrame.InputBegan:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		sliderDragging = true
+	end
+end)
+UserInputService.InputEnded:Connect(function(input)
+	if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+		sliderDragging = false
+	end
+end)
+UserInputService.InputChanged:Connect(function(input)
+	if sliderDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+		local pos = math.clamp((input.Position.X - SliderFrame.AbsolutePosition.X) / SliderFrame.AbsoluteSize.X, 0, 1)
+		SliderButton.Size = UDim2.new(pos, 0, 1, 0)
+		Config.HitboxSize = math.floor(pos * 100)
+		if Config.HitboxEnabled then
+			hjklmnvc(Config.HitboxSize)
+		end
+		SaveConfig()
+	end
+end)
+
+HitboxButton.MouseButton1Click:Connect(function()
+	Config.HitboxEnabled = not Config.HitboxEnabled
+	HitboxButton.Text = Config.HitboxEnabled and "Deactivate Hitbox" or "Activate Hitbox"
+	if Config.HitboxEnabled then
+		hjklmnvc(Config.HitboxSize)
+	else
+		hjklmnvc(1)
+	end
+	SaveConfig()
+end)
+
+--// Settings Tab Content
+local AntiLagButton = Instance.new("TextButton")
+AntiLagButton.Size = UDim2.new(0.9, 0, 0, 25)
+AntiLagButton.Position = UDim2.new(0.05, 0, 0, 10)
+AntiLagButton.BackgroundColor3 = Color3.fromRGB(25, 25, 35)
+AntiLagButton.BackgroundTransparency = 0.2
+AntiLagButton.Text = "Anti Lag"
+AntiLagButton.TextColor3 = Color3.new(1,1,1)
+AntiLagButton.Font = Enum.Font.GothamBold
+AntiLagButton.TextScaled = true
+Instance.new("UICorner", AntiLagButton).CornerRadius = UDim.new(0, 6)
+Instance.new("UIGradient", AntiLagButton).Color = ColorSequence.new{
+	ColorSequenceKeypoint.new(0, Color3.fromRGB(40, 40, 40)),
+	ColorSequenceKeypoint.new(1, Color3.fromRGB(60, 60, 60))
+}
+AntiLagButton.Parent = SettingsPage
+
+AntiLagButton.MouseButton1Click:Connect(function()
+	_G.Settings = {
+		Players = { ["Ignore Me"] = true, ["Ignore Others"] = true },
+		Meshes = { Destroy = false, LowDetail = true },
+		Images = { Invisible = true, LowDetail = false, Destroy = false },
+		["No Particles"] = true,
+		["No Camera Effects"] = true,
+		["No Explosions"] = true,
+		["No Clothes"] = true,
+		["Low Water Graphics"] = true,
+		["No Shadows"] = true,
+		["Low Rendering"] = true,
+		["Low Quality Parts"] = true
+	}
+	loadstring(game:HttpGet("https://raw.githubusercontent.com/CasperFlyModz/discord.gg-rips/main/FPSBooster.lua"))()
+	game.StarterGui:SetCore("SendNotification", {
+		Title = "5uads Anti Lag",
+		Text = "5uads Anti Lag Loaded",
+		Duration = 5
+	})
+end)
+
+--// Toggle GUI
+MobileOpenButton.MouseButton1Click:Connect(function()
+	Config.GuiVisible = not Config.GuiVisible
+	MainFrame.Visible = Config.GuiVisible
+	SaveConfig()
+end)
+UserInputService.InputBegan:Connect(function(input, gpe)
+	if not gpe and input.KeyCode == Enum.KeyCode.P then
+		Config.GuiVisible = not Config.GuiVisible
+		MainFrame.Visible = Config.GuiVisible
+		SaveConfig()
+	end
+end)
+
+--cracked by progamer LOL
