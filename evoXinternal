@@ -37,7 +37,7 @@ if ReGui.Theme and ReGui.Theme.Syntax then
     Syntax.Comment = Color3.fromRGB(200,120,40)
 end
 
-local ScriptTab = Window:CreateTab({ Name = "Synapse X" })
+local ScriptTab = Window:CreateTab({ Name = "Evo X Reborn" })
 
 local Editor = ScriptTab:CodeEditor({
     Editable = true,
