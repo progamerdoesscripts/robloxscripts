@@ -1,0 +1,148 @@
+
+local StarterGui = game:GetService("StarterGui")
+
+-- Send a notification to the local player
+StarterGui:SetCore("SendNotification", {
+    Title = "Evo X Reborn!";
+    Text = "Loaded Successfully, Enjoy!";
+    Duration = 5; -- seconds
+})
+
+local ReGui = loadstring(game:HttpGet("https://raw.githubusercontent.com/depthso/Dear-ReGui/refs/heads/main/ReGui.lua"))()
+
+ReGui:DefineTheme("Evo X Theme", {
+	Text = Color3.fromRGB(255,255,255),
+	ButtonsBg = Color3.fromRGB(30, 30,60),
+	WindowBg = Color3.fromRGB(35, 35, 50),
+	TitleBarBg = Color3.fromRGB(30,30,50),
+	TitleBarBgActive = Color3.fromRGB(30,30,50),
+	Border = Color3.fromRGB(30,30,50),
+	ResizeGrab = Color3.fromRGB(60,60,60),
+	TabBgActive = Color3.fromRGB(30, 30,60),
+})
+
+local Window = ReGui:TabsWindow({
+    Title = "",
+    Theme = "Evo X Theme",
+    Size = UDim2.fromOffset(700, 500)
+})
+
+if ReGui.Theme and ReGui.Theme.Syntax then
+    local Syntax = ReGui.Theme.Syntax
+    Syntax.Text = Color3.fromRGB(255,255,255)
+    Syntax.Background = Color3.fromRGB(25,25,25)
+    Syntax.SelectionBack = Color3.fromRGB(255,140,0)
+    Syntax.Keyword = Color3.fromRGB(255,180,90)
+    Syntax.String = Color3.fromRGB(255,170,80)
+    Syntax.Comment = Color3.fromRGB(200,120,40)
+end
+
+local ScriptTab = Window:CreateTab({ Name = "Synapse X" })
+
+local Editor = ScriptTab:CodeEditor({
+    Editable = true,
+    FontSize = 14,
+    TextXAlignment = Enum.TextXAlignment.Left,
+    TextYAlignment = Enum.TextYAlignment.Top,
+    TextWrapped = false,
+    ClearTextOnFocus = false
+})
+Editor:SetText("print('Evo X Reborn Internal UI')")
+
+local ButtonsRow = ScriptTab:Row({ Spacing = 8 })
+
+local ExecuteBtn = ButtonsRow:Button({
+    Text = "Execute",
+    Callback = function()
+        local code = Editor:GetText()
+        local func, err = loadstring(code)
+        if func then
+            func()
+        else
+            print("".. err)
+        end
+    end
+})
+
+if ExecuteBtn.Gui then
+    ExecuteBtn.Gui.BackgroundColor3 = Color3.fromRGB(255,140,0)
+    ExecuteBtn.Gui.TextColor3 = Color3.fromRGB(255,255,255)
+    ExecuteBtn.Gui.AutoButtonColor = false
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0,6)
+    corner.Parent = ExecuteBtn.Gui
+end
+
+local ClearBtn = ButtonsRow:Button({
+    Text = "Clear",
+    Callback = function()
+        Editor:ClearText()
+    end
+})
+if ClearBtn.Gui then
+    ClearBtn.Gui.BackgroundColor3 = Color3.fromRGB(255,140,0)
+    ClearBtn.Gui.TextColor3 = Color3.fromRGB(255,255,255)
+    ClearBtn.Gui.AutoButtonColor = false
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0,6)
+    corner.Parent = ClearBtn.Gui
+end
+
+local ConsoleTab = Window:CreateTab({ Name = "Console" })
+local Console = ConsoleTab:Console({
+    Enabled = true,
+    ReadOnly = true,
+    LineNumbers = true,
+    AutoScroll = true,
+    Size = UDim2.fromScale(1, 1),
+    Position = UDim2.fromOffset(0, 0)
+})
+
+local oldPrint = print
+local oldWarn = warn
+local oldError = error
+
+local function appendToConsole(prefix, msg, color)
+    local line = prefix .. msg .. ""
+    Console:AppendText(line)
+end
+
+print = function(...)
+    local msgs = {}
+    for i = 1, select("#", ...) do
+        table.insert(msgs, tostring(select(i, ...)))
+    end
+    local output = table.concat(msgs, " ")
+    oldPrint(output)
+    appendToConsole("", output, Color3.fromRGB(255, 255, 255))
+end
+
+warn = function(...)
+    local msgs = {}
+    for i = 1, select("#", ...) do
+        table.insert(msgs, tostring(select(i, ...)))
+    end
+    local output = table.concat(msgs, " ")
+    oldWarn(output)
+    appendToConsole("", output, Color3.fromRGB(255, 200, 0))
+end
+
+error = function(msg, level)
+    oldError(msg, level)
+    appendToConsole("", tostring(msg), Color3.fromRGB(255, 80, 80))
+end
+
+
+Window:SetVisible(true)
+
+local UserInputService = game:GetService("UserInputService")
+UserInputService.InputBegan:Connect(function(input, processed)
+    if processed then return end
+    if input.KeyCode == Enum.KeyCode.Insert then
+        local isVisible = Window.Visible
+        Window:SetVisible(not isVisible)
+    end
+    if input.KeyCode == Enum.KeyCode.Home then
+        Window:Close()
+    end
+end)
