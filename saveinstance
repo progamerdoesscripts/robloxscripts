@@ -1,0 +1,10 @@
+local success, err = pcall(function()
+    return saveinstance
+end)
+
+if success and typeof(saveinstance) == "function" then
+    saveinstance()
+    print("Electron SaveInstance Success!")
+else
+    game.Players.LocalPlayer:Kick("your executor doesnt support the function saveinstance(), noob lol")
+end
